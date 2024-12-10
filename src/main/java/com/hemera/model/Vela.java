@@ -24,9 +24,9 @@ public class Vela {
     @Max(value = 50000, message = "El precio no debe ser mayor a 50000")
     private int precio;
 
-    @NotNull(message = "La descripcion no puede ser nula")
+    @NotNull(message = "La imagen no puede ser nula")
     @Size(min = 10, max = 255, message = "Descripción debe tener entre 10 y 255 caracteres")
-    private String descripcion;
+    private String imagen;
 
     // Getters y Setters
     public Long getId() {
@@ -53,11 +53,11 @@ public class Vela {
         this.precio = precio;
     }
 
-    public String getDescripcion() {
-        return descripcion;
+    public String getImagen() {
+        return imagen;
     }
 
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
+    public void setImagen(String imagen) {
+        this.imagen = imagen;
     }
 }

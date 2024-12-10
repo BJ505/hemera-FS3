@@ -65,7 +65,7 @@ public class VelaController {
 
         vela.setNombre(detallesVela.getNombre());
         vela.setPrecio(detallesVela.getPrecio());
-        vela.setDescripcion(detallesVela.getDescripcion());
+        vela.setImagen(detallesVela.getImagen());
         Vela velaActualizado = velaService.guardarVela(vela);
         return ResponseEntity.ok(velaActualizado);
     }

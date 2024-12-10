@@ -19,8 +19,8 @@ public class CarritoService {
         return carritoRepository.findAll();
     }
 
-    public Optional<Carrito> obtenerCarrito(Long idCarrito) {
-        return carritoRepository.findById(idCarrito);
+    public Optional<Carrito> obtenerCarrito(Long idUsuario) {
+        return carritoRepository.findById(idUsuario);
     }
 
     public Carrito guardarCarrito(Carrito carrito) {
