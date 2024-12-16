@@ -2,15 +2,19 @@ package com.hemera.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import com.hemera.service.CustomUserDetailsService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpMethod; // Importar HttpMethod
@@ -20,38 +24,62 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
     @Autowired
-    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint; // Inyectar el manejador de 401
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+        authProvider.setUserDetailsService(customUserDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder()); // Usar contraseñas sin cifrar con {noop}
+        return authProvider;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance(); // Permitir contraseñas sin cifrar
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .cors(withDefaults()) // Habilitar CORS
-                .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF para facilitar pruebas
-                .authorizeHttpRequests(auth -> auth
-                        //Velasa
-                        .requestMatchers(HttpMethod.GET, "/api/velas/**").hasAnyRole("USER", "ADMIN") // GET permitido
-                        .requestMatchers(HttpMethod.POST, "/api/velas/**").hasRole("ADMIN") // POST permitido solo para  ADMIN
-                        .requestMatchers(HttpMethod.PUT, "/api/velas/**").hasRole("ADMIN") // PUT permitido solo para ADMIN
-                        .requestMatchers(HttpMethod.DELETE, "/api/velas/**").hasRole("ADMIN") // DELETE permitido solo para ADMIN
-                        //Carrito
-                        .requestMatchers(HttpMethod.GET, "/api/carrito/**").hasAnyRole("USER", "ADMIN") // GET permitido
-                        .requestMatchers(HttpMethod.POST, "/api/carrito/**").hasAnyRole("USER", "ADMIN") // POST permitido
-                        .requestMatchers(HttpMethod.PUT, "/api/carrito/**").hasAnyRole("USER", "ADMIN") // PUT permitido 
-                        .requestMatchers(HttpMethod.DELETE, "/api/carrito/**").hasAnyRole("USER", "ADMIN") // DELETE permitido 
-                        //Usuarios
-                        // .requestMatchers(HttpMethod.GET, "/api/usuario/**").hasAnyRole("USER", "ADMIN") // GET permitido
-                        // .requestMatchers(HttpMethod.POST, "/api/usuario/**").hasAnyRole("USER", "ADMIN") // POST permitido
-                        .requestMatchers(HttpMethod.PUT, "/api/usuario/**").hasAnyRole("USER", "ADMIN") // PUT permitido 
-                        .requestMatchers(HttpMethod.DELETE, "/api/usuario/**").hasAnyRole("ADMIN") // DELETE permitido 
-                        .anyRequest().authenticated() // Cualquier otra ruta requiere autenticación
-                )
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(customAuthenticationEntryPoint) // Usar manejador personalizado para
-                                                                                  // 401 Unauthorized
-                        .accessDeniedHandler(accessDeniedHandler()) // Usar manejador personalizado para 403 Forbidden
-                )
-                .httpBasic(withDefaults()) // Habilitar autenticación básica
-                .build(); // Construir la cadena de seguridad
+        http
+            .cors(withDefaults()) // Habilitar CORS
+            .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF para facilitar pruebas
+            .authorizeHttpRequests(auth -> auth
+                // Velas
+                .requestMatchers(HttpMethod.GET, "/api/velas/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/velas/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/velas/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/velas/**").hasRole("ADMIN")
+                // Carrito
+                .requestMatchers(HttpMethod.GET, "/api/carrito/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/carrito/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/carrito/**").hasAnyRole("USER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/carrito/**").hasAnyRole("USER", "ADMIN")
+                // Usuarios
+                .requestMatchers(HttpMethod.GET, "/api/usuarios/user/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/usuarios/user/**").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/usuarios/user/**").permitAll()
+                .requestMatchers(HttpMethod.DELETE, "/api/usuarios/user/**").hasRole("ADMIN")
+                // Login
+                .requestMatchers(HttpMethod.POST, "/api/usuarios/login").permitAll()
+                // Cualquier otra ruta
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler())
+            )
+            .httpBasic(withDefaults()); // Habilitar autenticación básica
+
+        return http.build();
     }
 
     @Bean
@@ -62,36 +90,17 @@ public class SecurityConfig {
         };
     }
 
-    // Configuración global de CORS
     @Bean
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // Permitir todas las rutas
-                        .allowedOrigins("http://localhost:4200") // Permitir solicitudes desde el front-end en Angular
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Métodos permitidos
-                        .allowedHeaders("*") // Permitir todos los encabezados
-                        .allowCredentials(true); // Permitir envío de credenciales (cookies o Authorization)
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:4200")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(true);
             }
         };
-    }
-
-    // Definir usuarios en memoria con sus respectivos roles
-    @Bean
-    public UserDetailsService userDetailsService() {
-        UserDetails user = User.builder()
-                .username("user")
-                .password("{noop}user123") // No se codifica la contraseña para facilitar pruebas
-                .roles("USER")
-                .build();
-
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password("{noop}admin123") // No se codifica la contraseña para facilitar pruebas
-                .roles("ADMIN")
-                .build();
-
-        return new InMemoryUserDetailsManager(user, admin);
     }
 }

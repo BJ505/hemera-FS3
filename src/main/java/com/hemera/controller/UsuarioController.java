@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.hemera.exception.ResourceNotFoundException;
+import com.hemera.model.LoginRequest;
 import com.hemera.model.Usuario;
 import com.hemera.service.UsuarioService;
 
@@ -43,18 +44,28 @@ public class UsuarioController {
     }
 
     // Obtener un usuario por su ID con manejo de excepción
-    @GetMapping("/{id}")
-    public ResponseEntity<Usuario> obtenerUsuario(@PathVariable Long id) {
-        Usuario usuario = usuarioService.obtenerUsuario(id)
-                .orElseThrow(() -> new ResourceNotFoundException("El usuario con ID " + id + " no fue encontrado."));
+    @GetMapping("/user/{id}")
+    public ResponseEntity<Usuario> obtenerUsuarioPorId(@PathVariable Long id) {
+        Usuario usuario = usuarioService.obtenerUsuarioPorId(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + id));
+        return ResponseEntity.ok(usuario);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<Usuario> login(@RequestBody LoginRequest loginRequest) {
+        // Imprimir los parámetros recibidos
+        System.out.println("Login request received: Username = " + loginRequest.getUsername() + ", Password = " + loginRequest.getPassword());
+
+        Usuario usuario = usuarioService.login(loginRequest.getUsername(), loginRequest.getPassword())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado o credenciales incorrectas."));
         return ResponseEntity.ok(usuario);
     }
 
     // Eliminar un usuario por su ID con manejo de excepción
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/user/{id}")
     public ResponseEntity<Void> eliminarUsuario(@PathVariable Long id) {
         // Verifica si el usuario existe, si no, lanza la excepción
-        usuarioService.obtenerUsuario(id)
+        usuarioService.obtenerUsuarioPorId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El usuario con ID " + id + " no fue encontrado."));
 
         // Elimina el usuario si existe
@@ -64,9 +75,9 @@ public class UsuarioController {
     }
 
     // Actualizar un usuario existente con manejo de excepción
-    @PutMapping("/{id}")
+    @PutMapping("/user/{id}")
     public ResponseEntity<Usuario> actualizarUsuario(@PathVariable Long id, @Valid @RequestBody Usuario detallesUsuario) {
-        Usuario usuario = usuarioService.obtenerUsuario(id)
+        Usuario usuario = usuarioService.obtenerUsuarioPorId(id)
                 .orElseThrow(() -> new ResourceNotFoundException("El usuario con ID " + id + " no fue encontrado."));
 
         usuario.setUsername(detallesUsuario.getUsername());

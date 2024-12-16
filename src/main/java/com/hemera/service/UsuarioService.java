@@ -18,7 +18,7 @@ public class UsuarioService {
         return usuarioRepository.findAll();
     }
 
-    public Optional<Usuario> obtenerUsuario(Long id) {
+    public Optional<Usuario> obtenerUsuarioPorId(Long id) {
         return usuarioRepository.findById(id);
     }
 
@@ -28,5 +28,9 @@ public class UsuarioService {
 
     public void eliminarUsuario(Long id) {
         usuarioRepository.deleteById(id);
+    }
+
+    public Optional<Usuario> login(String username, String password) {
+        return usuarioRepository.findByUsernameAndPassword(username, password);
     }
 }
